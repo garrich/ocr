@@ -41,7 +41,7 @@ def main(working_dir, pdf_file_path=None):
     
     # Step 3: Translation (character substitution)
     for i, detections in enumerate(detections_per_image):
-        detections_per_image[i] = translate_detections(detections, ["41","шщ","Св", "Ю!", "СТ", "ЦЕНТР", "0А", "ОА", ",АН", "РВС", "БІК", "04"])
+        detections_per_image[i] = translate_detections(detections, ["41","шщ","Св", "ОАН","УАН","Ю!","шли", "СТ", "ТТ","ЦЕНТР","ЦЕ", "0А", "ОА", ",АН", "РВС", "БІК", "04", "ЦЕ", "АТ", "БАНК"])
 
     # Step 4: Image Processing
     for image_path, detections in zip(image_paths, detections_per_image):

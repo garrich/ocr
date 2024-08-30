@@ -1,24 +1,33 @@
+import json
 import re
-from typing import List
+from typing import Dict, List
 from data_structures import TextDetection
+import deepl
+import os
 
+deepl_auth_key = os.environ.get('TAK', '')
+translator = deepl.Translator(deepl_auth_key)
+CACHE_FILE = 'translation_cache.json'
+
+def load_translation_cache() -> Dict[str, str]:
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_translation_cache(cache: Dict[str, str]):
+    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2)
+
+# Load the cache when the module is imported
+translation_cache = load_translation_cache()
 
 def translate_detections(detections: List[TextDetection], 
                          start_with_exclusions: List[str] = [], 
                          exact_match_exclusions: List[str] = []) -> List[TextDetection]:
-    cyrillic_to_latin = {
-        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
-        'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'yi', 'й': 'y', 'к': 'k', 'л': 'l',
-        'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-        'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ь': "'",
-        'ю': 'yu', 'я': 'ya'
-    }
 
     def is_excluded(text: str) -> bool:
-        # Check for exact match exclusions
-        if text.strip().lower() in exact_match_exclusions:
-            return True
-
+        
         # Check for start with exclusions
         for prefix in start_with_exclusions:
             if text.strip().lower().__contains__(prefix.lower()):
@@ -48,8 +57,24 @@ def translate_detections(detections: List[TextDetection],
                     re.match(date_pattern, text))
 
     def translate_text(text: str) -> str:
-        return ''.join(cyrillic_to_latin.get(c.lower(), c) for c in text)
+        # return ''.join(cyrillic_to_latin.get(c.lower(), c) for c in text)
+        return deepl(text)
 
+    def deepl(text: str) -> str:
+        # Check if the translation is already in the cache
+        if text in translation_cache:
+            return translation_cache[text]
+        
+        # If not in cache, translate using DeepL
+        translated = translator.translate_text(text, target_lang="EN-GB").text
+        
+        # Store the new translation in the cache
+        translation_cache[text] = translated
+        save_translation_cache(translation_cache)
+        
+        return translated
+        
+    
     translated_detections = []
 
     for detection in detections:

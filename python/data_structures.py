@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import json
 import os
-from typing import List, OrderedDict, Tuple
+from typing import List, OrderedDict, Tuple, Union
 
 @dataclass
 class TextDetection:
@@ -15,7 +15,7 @@ class FontSizeCache:
     def __init__(self, max_size=10000, cache_file='resources/size-dict.txt'):
         self.max_size = max_size
         self.cache_file = cache_file
-        self.cache: OrderedDict[Tuple[int, int, int], int] = OrderedDict()
+        self.cache: OrderedDict[Tuple[int, int, int], Union[int, float]] = OrderedDict()
         self.load_cache()
         
         # Initial guesses for common scenarios
@@ -26,7 +26,7 @@ class FontSizeCache:
             # Add more initial guesses as needed
         }
         
-    def get(self, bbox_width: int, bbox_height: int, text_length: int) -> int:
+    def get(self, bbox_width: int, bbox_height: int, text_length: int) -> Union[int, float]:
         key = (bbox_width, bbox_height, text_length)
         if key in self.cache:
             # Move accessed item to the end to mark it as recently used
@@ -34,7 +34,7 @@ class FontSizeCache:
             return self.cache[key]
         return self.initial_guesses.get(key)
     
-    def set(self, bbox_width: int, bbox_height: int, text_length: int, font_size: int):
+    def set(self, bbox_width: int, bbox_height: int, text_length: int, font_size: Union[int, float]):
         key = (bbox_width, bbox_height, text_length)
         if key in self.cache:
             self.cache.move_to_end(key)
@@ -48,9 +48,13 @@ class FontSizeCache:
             try:
                 with open(self.cache_file, 'r') as f:
                     data = json.load(f)
-                    self.cache = OrderedDict((tuple(map(int, k.strip('()').split(','))), v) for k, v in data.items())
-            except json.JSONDecodeError:
-                print(f"Error reading cache file: {self.cache_file}. Creating a new cache.")
+                    self.cache = OrderedDict(
+                        (tuple(map(int, k.strip('()').split(','))),
+                         float(v) if '.' in str(v) else int(v))
+                        for k, v in data.items()
+                    )
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error reading cache file: {self.cache_file}. Creating a new cache. Error: {e}")
                 self.cache = OrderedDict()
         else:
             print(f"Cache file not found: {self.cache_file}. Creating a new cache.")

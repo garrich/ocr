@@ -46,3 +46,4 @@ wheels/
 Thumbs.db
 
 python/output/
+python/translation_cache.json
